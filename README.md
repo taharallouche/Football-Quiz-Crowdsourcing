@@ -1,7 +1,9 @@
 # Multi-winner Approval Voting Goes Epistemic: Football Quiz and Experiments
 ## Tahar Allouche, Jérôme Lang, Florian Yger
 
-**Paper Abstract ([paper available here](https://arxiv.org/pdf/2201.06655.pdf)):**\
+# UAI-2022
+
+**Paper Abstract ([paper available here](https://proceedings.mlr.press/v180/allouche22a/allouche22a.pdf)):**\
 Epistemic voting interprets votes as noisy signals
 about a ground truth. We consider contexts where
 the truth consists of a set of objective winners,
