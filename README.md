@@ -29,8 +29,15 @@ The participants are then ranked according to the following protocol:
 
 
 **Code:**\
-Here we succintly present the main functions in the [python file](Experiments.py):
-- *compare_methods(num, n_batch)*: This function uses the Wilcoxon statistical test to compare the different rules for a given number of voters *num* and different batches *n_batch*.
-- *plot_losses(n_batch)*: This function computes the Hamming and the 0-1 subset losses for different aggregation methods and average them over *n_batch* batches. This is done for each *n* going from 10 to 76 (which is the total number of participants). It then plots the losses and the 95% confidence margins.
+Here we succintly present the main functions in the [python file](src/experiments.py):
+- `compare_methods(num, n_batch)`: This function uses the Wilcoxon statistical test to compare the different rules for a given number of voters *num* and different batches *n_batch*.
+- `plot_losses(n_batch)`: This function computes the Hamming and the 0-1 subset losses for different aggregation methods and average them over *n_batch* batches. This is done for each *n* going from 10 to 76 (which is the total number of participants). It then plots the losses and the 95% confidence margins.
+
+To run the experiments, execute the following command:
+
+`python3 src/experiments.py`
+
+You will be asked to specify the number of batches.
+
 
 
