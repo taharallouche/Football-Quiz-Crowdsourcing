@@ -8,15 +8,16 @@ import scipy.stats
 import ray
 
 # Import functions
-from Data_preparation import prepare_data
-from Aggregation_rules import majority, mode
-from AMLE import amle, amle_free, initialize_pq
+from data_preparation import prepare_data
+from aggregation_rules import majority, mode
+from amle import amle, amle_free, initialize_pq
+from utils import confidence_margin_mean
 
 # Initialize ray to parallelize the computations when comparing methods
 ray.init()
 
 
-def compare_methods(num, n_batch):
+def compare_methods(num: int, n_batch: int) -> None:
     """
     Compares the Hamming Loss and 0/1 Loss of Label-wise Majority, Modal, AMLE constrained/unconstrained
     :param num: number of voters in each batch
@@ -29,8 +30,11 @@ def compare_methods(num, n_batch):
     Gt, Anno = prepare_data()
 
     # Initialize parameters dataframe
-    pq_data = {"Voter": Anno.Voter.unique(), "p": 0.51 * np.ones(Anno.Voter.unique().shape),
-               'q': 0.49 * np.ones(Anno.Voter.unique().shape)}
+    pq_data = {
+        "Voter": Anno.Voter.unique(),
+        "p": 0.51 * np.ones(Anno.Voter.unique().shape),
+        "q": 0.49 * np.ones(Anno.Voter.unique().shape),
+    }
     t_data = {"Team": columns, "t": 0.5 * np.ones(len(columns))}
     t_0 = pd.DataFrame(t_data)
 
@@ -48,16 +52,19 @@ def compare_methods(num, n_batch):
         # initialize noise parameters
         p = np.random.uniform(0.5, 0.99, Ann.Voter.unique().shape)
         q = np.random.uniform(0.1, 0.5, Ann.Voter.unique().shape)
-        pq_data = {"Voter": Ann.Voter.unique(), "p": p,
-                   'q': q}
+        pq_data = {"Voter": Ann.Voter.unique(), "p": p, "q": q}
         pq_0 = pd.DataFrame(pq_data)
         initialize_pq(Ann, pq_0)
 
         # Aggregate annotations (in parallel) using majority , mode , amle_f and amle_c
         Mode, Maj, agg_amle, agg_amle_free = ray.get(
-            [mode.remote(Ann), majority.remote(Ann),
-             amle.remote(Ann, pq_0, t_0, 0.00001, 100),
-             amle_free.remote(Ann, pq_0, t_0, 0.00001, 100)])
+            [
+                mode.remote(Ann),
+                majority.remote(Ann),
+                amle.remote(Ann, pq_0, t_0, 0.00001, 100),
+                amle_free.remote(Ann, pq_0, t_0, 0.00001, 100),
+            ]
+        )
         G = Gt[columns].to_numpy().astype(int)
         Mode = Mode[columns].to_numpy().astype(int)
         Maj = Maj[columns].to_numpy().astype(int)
@@ -106,7 +113,7 @@ def compare_methods(num, n_batch):
     print("Wilcoxon test for Hamming Acc AMLE_c/AMLE_f: t= ", t, " ,p= ", p)
 
 
-def plot_losses(n_batch):
+def plot_losses(n_batch: int) -> None:
     """
     For growing number of voters, sample batches of voters and test methods then plot losses
     :param n_batch: number of batches for each number of voters
@@ -123,8 +130,11 @@ def plot_losses(n_batch):
     Hamming = np.zeros([4, n_batch, n - 1])
 
     # Initialize parameters dataframes
-    pq_data = {"Voter": Anno.Voter.unique(), "p": 0.51 * np.ones(Anno.Voter.unique().shape),
-               'q': 0.49 * np.ones(Anno.Voter.unique().shape)}
+    pq_data = {
+        "Voter": Anno.Voter.unique(),
+        "p": 0.51 * np.ones(Anno.Voter.unique().shape),
+        "q": 0.49 * np.ones(Anno.Voter.unique().shape),
+    }
     pq_0_g = pd.DataFrame(pq_data)
     t_data = {"Team": columns, "t": 0.5 * np.ones(len(columns))}
     t_0 = pd.DataFrame(t_data)
@@ -140,16 +150,23 @@ def plot_losses(n_batch):
             Ann = Anno[Anno["Voter"].isin(voters)]
 
             # initialize noise parameters
-            pq_data = {"Voter": Ann.Voter.unique(), "p": 0.51 * np.ones(Ann.Voter.unique().shape),
-                       'q': 0.49 * np.ones(Ann.Voter.unique().shape)}
+            pq_data = {
+                "Voter": Ann.Voter.unique(),
+                "p": 0.51 * np.ones(Ann.Voter.unique().shape),
+                "q": 0.49 * np.ones(Ann.Voter.unique().shape),
+            }
             pq_0 = pd.DataFrame(pq_data)
             initialize_pq(Ann, pq_0)
 
             # Run (in parallel) different aggregation methods: majority, mode, amle_f, amle_c
             Mode, Maj, agg_amle, agg_amle_free = ray.get(
-                [mode.remote(Ann), majority.remote(Ann),
-                 amle.remote(Ann, pq_0, t_0, 0.00001, 100),
-                 amle_free.remote(Ann, pq_0, t_0, 0.00001, 100)])
+                [
+                    mode.remote(Ann),
+                    majority.remote(Ann),
+                    amle.remote(Ann, pq_0, t_0, 0.00001, 100),
+                    amle_free.remote(Ann, pq_0, t_0, 0.00001, 100),
+                ]
+            )
             G = Gt[columns].to_numpy().astype(int)
             Mode = Mode[columns].to_numpy().astype(int)
             Maj = Maj[columns].to_numpy().astype(int)
@@ -171,26 +188,51 @@ def plot_losses(n_batch):
     plt.ylim(0.1, 1)
     Zero_one_margin = np.zeros([4, n - 1, 3])
     for num in range(10, n + 9):
-        Zero_one_margin[0, num - 10, :] = confidence_margin_mean(Zero_one[0, :, num - 10])
-        Zero_one_margin[1, num - 10, :] = confidence_margin_mean(Zero_one[1, :, num - 10])
-        Zero_one_margin[2, num - 10, :] = confidence_margin_mean(Zero_one[2, :, num - 10])
-        Zero_one_margin[3, num - 10, :] = confidence_margin_mean(Zero_one[3, :, num - 10])
+        Zero_one_margin[0, num - 10, :] = confidence_margin_mean(
+            Zero_one[0, :, num - 10]
+        )
+        Zero_one_margin[1, num - 10, :] = confidence_margin_mean(
+            Zero_one[1, :, num - 10]
+        )
+        Zero_one_margin[2, num - 10, :] = confidence_margin_mean(
+            Zero_one[2, :, num - 10]
+        )
+        Zero_one_margin[3, num - 10, :] = confidence_margin_mean(
+            Zero_one[3, :, num - 10]
+        )
 
-    plt.errorbar(range(10, n + 9), Zero_one_margin[2, :, 0], label='AMLE_c', linestyle="solid")
-    plt.fill_between(range(10, n + 9), Zero_one_margin[2, :, 1], Zero_one_margin[2, :, 2], alpha=0.15)
+    plt.errorbar(
+        range(10, n + 9), Zero_one_margin[2, :, 0], label="AMLE_c", linestyle="solid"
+    )
+    plt.fill_between(
+        range(10, n + 9), Zero_one_margin[2, :, 1], Zero_one_margin[2, :, 2], alpha=0.15
+    )
 
-    plt.errorbar(range(10, n + 9), Zero_one_margin[3, :, 0], label='AMLE_f', linestyle="dashdot")
-    plt.fill_between(range(10, n + 9), Zero_one_margin[3, :, 1], Zero_one_margin[3, :, 2], alpha=0.15)
+    plt.errorbar(
+        range(10, n + 9), Zero_one_margin[3, :, 0], label="AMLE_f", linestyle="dashdot"
+    )
+    plt.fill_between(
+        range(10, n + 9), Zero_one_margin[3, :, 1], Zero_one_margin[3, :, 2], alpha=0.15
+    )
 
-    plt.errorbar(range(10, n + 9), Zero_one_margin[0, :, 0], label='Modal', linestyle="dashed")
-    plt.fill_between(range(10, n + 9), Zero_one_margin[0, :, 1], Zero_one_margin[0, :, 2], alpha=0.15)
+    plt.errorbar(
+        range(10, n + 9), Zero_one_margin[0, :, 0], label="Modal", linestyle="dashed"
+    )
+    plt.fill_between(
+        range(10, n + 9), Zero_one_margin[0, :, 1], Zero_one_margin[0, :, 2], alpha=0.15
+    )
 
-    plt.errorbar(range(10, n + 9), Zero_one_margin[1, :, 0], label='Majority', linestyle="dotted")
-    plt.fill_between(range(10, n + 9), Zero_one_margin[1, :, 1], Zero_one_margin[1, :, 2], alpha=0.15)
+    plt.errorbar(
+        range(10, n + 9), Zero_one_margin[1, :, 0], label="Majority", linestyle="dotted"
+    )
+    plt.fill_between(
+        range(10, n + 9), Zero_one_margin[1, :, 1], Zero_one_margin[1, :, 2], alpha=0.15
+    )
 
     plt.legend()
     plt.xlabel("Number of voters")
     plt.ylabel("0/1 Accuracy")
+    plt.show()
 
     # Plot Hamming accuracy
     fig1 = plt.figure()
@@ -202,19 +244,40 @@ def plot_losses(n_batch):
         Hamming_margin[2, num - 10, :] = confidence_margin_mean(Hamming[2, :, num - 10])
         Hamming_margin[3, num - 10, :] = confidence_margin_mean(Hamming[3, :, num - 10])
 
-    plt.errorbar(range(10, n + 9), Hamming_margin[2, :, 0], label='AMLE_c', linestyle="solid")
-    plt.fill_between(range(10, n + 9), Hamming_margin[2, :, 1], Hamming_margin[2, :, 2], alpha=0.15)
+    plt.errorbar(
+        range(10, n + 9), Hamming_margin[2, :, 0], label="AMLE_c", linestyle="solid"
+    )
+    plt.fill_between(
+        range(10, n + 9), Hamming_margin[2, :, 1], Hamming_margin[2, :, 2], alpha=0.15
+    )
 
-    plt.errorbar(range(10, n + 9), Hamming_margin[3, :, 0], label='AMLE_f', linestyle="dashdot")
-    plt.fill_between(range(10, n + 9), Hamming_margin[3, :, 1], Hamming_margin[3, :, 2], alpha=0.15)
+    plt.errorbar(
+        range(10, n + 9), Hamming_margin[3, :, 0], label="AMLE_f", linestyle="dashdot"
+    )
+    plt.fill_between(
+        range(10, n + 9), Hamming_margin[3, :, 1], Hamming_margin[3, :, 2], alpha=0.15
+    )
 
-    plt.errorbar(range(10, n + 9), Hamming_margin[0, :, 0], label='Modal', linestyle="dashed")
-    plt.fill_between(range(10, n + 9), Hamming_margin[0, :, 1], Hamming_margin[0, :, 2], alpha=0.15)
+    plt.errorbar(
+        range(10, n + 9), Hamming_margin[0, :, 0], label="Modal", linestyle="dashed"
+    )
+    plt.fill_between(
+        range(10, n + 9), Hamming_margin[0, :, 1], Hamming_margin[0, :, 2], alpha=0.15
+    )
 
-    plt.errorbar(range(10, n + 9), Hamming_margin[1, :, 0], label='Majority', linestyle="dotted")
-    plt.fill_between(range(10, n + 9), Hamming_margin[1, :, 1], Hamming_margin[1, :, 2], alpha=0.15)
+    plt.errorbar(
+        range(10, n + 9), Hamming_margin[1, :, 0], label="Majority", linestyle="dotted"
+    )
+    plt.fill_between(
+        range(10, n + 9), Hamming_margin[1, :, 1], Hamming_margin[1, :, 2], alpha=0.15
+    )
 
     plt.legend()
     plt.xlabel("Number of voters")
     plt.ylabel("Hamming Accuracy")
+    plt.show()
 
+
+if __name__ == "__main__":
+    n_batch = int(input("Choose number of batches: "))
+    plot_losses(n_batch)
