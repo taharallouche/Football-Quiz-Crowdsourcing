@@ -36,8 +36,9 @@ Here we succintly present the main functions in the [python file](src/experiment
 - `plot_losses(n_batch)`: This function computes the Hamming and the 0-1 subset losses for different aggregation methods and average them over *n_batch* batches. This is done for each *n* going from 10 to 76 (which is the total number of participants). It then plots the losses and the 95% confidence margins.
 
 To run the experiments, execute the following command:
-
-`python3 src/experiments.py`
+```bat
+python3 src/experiments.py
+```
 
 You will be asked to specify the number of batches.
 
